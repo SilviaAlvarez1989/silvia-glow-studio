@@ -98,6 +98,8 @@ async function initDB() {
     const check = await client.query(`SELECT to_regclass('public.salons') as exists`);
     if (check.rows[0].exists) {
       console.log('✅ DB already initialized');
+      // Always keep salon contact info up to date
+      await client.query(`UPDATE salons SET phone = '(718) 427-3594', address = '854 E 163rd St, Bronx, NY 10459' WHERE slug = 'silvia-glow'`);
       return;
     }
     // Schema
@@ -137,6 +139,9 @@ async function initDB() {
         [uuidv4(),sid,name,cat,price,dur]);
     }
     console.log('✅ Seed data loaded — Silvia Glow Studio ready!');
+    // Update salon contact info
+    await client.query(`UPDATE salons SET phone = '(718) 427-3594', address = '854 E 163rd St, Bronx, NY 10459' WHERE slug = 'silvia-glow'`);
+    console.log('✅ Salon contact info updated');
   } catch (err) {
     console.error('❌ DB init error:', err.message);
   } finally {
