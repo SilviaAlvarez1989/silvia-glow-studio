@@ -11,6 +11,7 @@ app.use(cors({
 app.use(express.json());
 
 // Routes
+app.use('/api/booking', require('./routes/booking'));
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/appointments', require('./routes/appointments'));
 app.use('/api/services', require('./routes/services'));

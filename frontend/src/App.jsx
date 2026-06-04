@@ -10,12 +10,22 @@ import NewAppointment from './pages/NewAppointment';
 import ClientsPage from './pages/ClientsPage';
 import ServicesPage from './pages/ServicesPage';
 import StaffPage from './pages/StaffPage';
+import BookingPage from './pages/BookingPage';
+import CancelPage from './pages/CancelPage';
+import ConfirmPage from './pages/ConfirmPage';
 
 export default function App() {
   return (
     <AuthProvider>
       <BrowserRouter>
         <Routes>
+          {/* Public booking portal */}
+          <Route path="/book" element={<BookingPage />} />
+          <Route path="/book/:slug" element={<BookingPage />} />
+          <Route path="/book/cancel/:token" element={<CancelPage />} />
+          <Route path="/book/confirm/:token" element={<ConfirmPage />} />
+
+          {/* Internal app */}
           <Route path="/login" element={<Login />} />
           <Route element={<Layout />}>
             <Route path="/" element={<Dashboard />} />
