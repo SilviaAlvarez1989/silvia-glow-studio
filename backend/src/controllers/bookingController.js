@@ -6,6 +6,10 @@ const crypto = require('crypto');
 const CANCEL_HOURS = 24;
 const CANCEL_FEE = 15.00;
 const NOSHOW_FEE = 25.00;
+const DEPOSIT_AMOUNT = 25.00; // $25 deposit required at booking
+
+// Stripe
+const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 
 // Helper: generate secure token
 function generateToken() {
@@ -21,6 +25,41 @@ function formatPhone(phone) {
   }
   return phone;
 }
+
+// POST /api/booking/salon/:slug/create-deposit-intent
+// Creates a Stripe Payment Intent for $25 deposit
+exports.createDepositIntent = async (req, res) => {
+  try {
+    const { slug } = req.params;
+    const { client_name, client_email } = req.body;
+
+    const { rows: salonRows } = await pool.query(
+      `SELECT id, name FROM salons WHERE slug = $1 AND active = true`, [slug]
+    );
+    if (!salonRows.length) return res.status(404).json({ error: 'Salon not found' });
+
+    const paymentIntent = await stripe.paymentIntents.create({
+      amount: Math.round(DEPOSIT_AMOUNT * 100), // $25.00 in cents
+      currency: 'usd',
+      metadata: {
+        salon_slug: slug,
+        salon_name: salonRows[0].name,
+        client_name: client_name || '',
+        type: 'booking_deposit',
+      },
+      description: `Depósito de cita - ${salonRows[0].name}`,
+      receipt_email: client_email || undefined,
+    });
+
+    res.json({
+      clientSecret: paymentIntent.client_secret,
+      deposit_amount: DEPOSIT_AMOUNT,
+    });
+  } catch (err) {
+    console.error('Stripe error:', err);
+    res.status(500).json({ error: 'Error procesando el depósito' });
+  }
+};
 
 // GET /api/booking/salon/:slug
 // Returns salon info + cancellation policy
@@ -183,7 +222,7 @@ exports.getAvailability = async (req, res) => {
 
 // POST /api/booking/salon/:slug/reserve
 // Body: { client_name, client_email, client_phone, service_id, technician_id, date, time,
-//         card_last4, card_brand, terms_accepted, terms_ip }
+//         payment_intent_id, terms_accepted, terms_ip }
 exports.createReservation = async (req, res) => {
   const client = await pool.connect();
   try {
@@ -191,7 +230,7 @@ exports.createReservation = async (req, res) => {
     const {
       client_name, client_email, client_phone,
       service_id, technician_id, date, time,
-      card_last4, card_brand,
+      payment_intent_id,
       terms_accepted, terms_ip
     } = req.body;
 
@@ -202,6 +241,17 @@ exports.createReservation = async (req, res) => {
     if (!terms_accepted) {
       return res.status(400).json({ error: 'Debes aceptar los términos de cancelación' });
     }
+    if (!payment_intent_id) {
+      return res.status(400).json({ error: 'El depósito de $25 es requerido para reservar' });
+    }
+
+    // Verify payment was successful
+    const paymentIntent = await stripe.paymentIntents.retrieve(payment_intent_id);
+    if (paymentIntent.status !== 'succeeded') {
+      return res.status(400).json({ error: 'El pago del depósito no fue completado' });
+    }
+    const card_last4 = paymentIntent.latest_charge ? '' : '';
+    const card_brand = '';
 
     const { rows: salonRows } = await client.query(
       `SELECT id, name, phone, timezone FROM salons WHERE slug = $1 AND active = true`,
@@ -296,7 +346,10 @@ exports.createReservation = async (req, res) => {
           confirm_token: confirmToken,
           cancel_fee: CANCEL_FEE,
           noshow_fee: NOSHOW_FEE,
-          cancel_policy_hours: CANCEL_HOURS
+          cancel_policy_hours: CANCEL_HOURS,
+          deposit_amount: DEPOSIT_AMOUNT,
+          deposit_payment_intent: payment_intent_id,
+          deposit_status: 'paid'
         })
       ]
     );

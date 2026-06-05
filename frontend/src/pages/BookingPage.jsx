@@ -1,8 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getSalonInfo, getServices, getStaff, getAvailability, createReservation } from '../lib/bookingApi';
+import { getSalonInfo, getServices, getStaff, getAvailability, createDepositIntent, createReservation } from '../lib/bookingApi';
+import { loadStripe } from '@stripe/stripe-js';
 
-const STEPS = ['Servicio', 'Técnica', 'Fecha & Hora', 'Tus Datos', 'Confirmar'];
+const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PK || 'pk_live_placeholder');
+
+const DEPOSIT_AMOUNT = 25;
+
+const STEPS = ['Servicio', 'Técnica', 'Fecha & Hora', 'Tus Datos', 'Pago', 'Confirmar'];
 
 const TERMS_TEXT = `POLÍTICA DE CANCELACIÓN — Silvia Glow Studio LLC
 
@@ -52,6 +57,9 @@ export default function BookingPage() {
   const [cardBrand, setCardBrand] = useState('Visa');
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [showTerms, setShowTerms] = useState(false);
+  const [paymentIntentId, setPaymentIntentId] = useState(null);
+  const [depositPaid, setDepositPaid] = useState(false);
+  const [processingPayment, setProcessingPayment] = useState(false);
 
   useEffect(() => {
     async function load() {
@@ -112,8 +120,8 @@ export default function BookingPage() {
       setError('Debes aceptar los términos de cancelación.');
       return;
     }
-    if (!cardLast4 || cardLast4.length !== 4) {
-      setError('Ingresa los últimos 4 dígitos de tu tarjeta.');
+    if (!paymentIntentId || !depositPaid) {
+      setError('Debes pagar el depósito de $25 para confirmar la cita.');
       return;
     }
     setSubmitting(true);
@@ -127,8 +135,7 @@ export default function BookingPage() {
         technician_id: selectedStaff?.id || null,
         date: selectedDate,
         time: selectedTime,
-        card_last4: cardLast4,
-        card_brand: cardBrand,
+        payment_intent_id: paymentIntentId,
         terms_accepted: true,
         terms_ip: getClientIP(),
       });
@@ -140,8 +147,56 @@ export default function BookingPage() {
     }
   }
 
+  async function handlePayDeposit() {
+    setProcessingPayment(true);
+    setError('');
+    try {
+      // Create deposit intent on backend
+      const { clientSecret } = await createDepositIntent(slug, {
+        client_name: clientName,
+        client_email: clientEmail,
+      });
+
+      // Load Stripe and confirm payment
+      const stripe = await stripePromise;
+      const { error: stripeError, paymentIntent } = await stripe.confirmCardPayment(clientSecret, {
+        payment_method: {
+          card: window.__stripeCardElement,
+          billing_details: {
+            name: clientName,
+            email: clientEmail || undefined,
+            phone: clientPhone,
+          },
+        },
+      });
+
+      if (stripeError) {
+        setError(stripeError.message);
+      } else if (paymentIntent.status === 'succeeded') {
+        setPaymentIntentId(paymentIntent.id);
+        setDepositPaid(true);
+        setStep(5); // Go to confirm step
+      }
+    } catch (e) {
+      setError(e.response?.data?.error || 'Error procesando el pago. Intenta de nuevo.');
+    } finally {
+      setProcessingPayment(false);
+    }
+  }
+
   // ── SUCCESS SCREEN ──────────────────────────────────────────────
   if (result) {
+    const waMessage = encodeURIComponent(
+      `Hola Silvia! 🌸 Acabo de reservar una cita:\n\n` +
+      `👤 Nombre: ${result.appointment.client_name}\n` +
+      `💅 Servicio: ${result.appointment.service_name}\n` +
+      `📅 Fecha: ${formatDate(selectedDate)}\n` +
+      `⏰ Hora: ${formatTime(selectedTime)}\n` +
+      `💰 Precio: $${result.appointment.price}\n\n` +
+      `¡Nos vemos pronto!`
+    );
+    const waLink = `https://wa.me/17184273594?text=${waMessage}`;
+
     return (
       <div className="min-h-screen bg-pink-50 flex items-center justify-center p-4">
         <div className="bg-white rounded-2xl shadow-lg p-8 max-w-md w-full text-center">
@@ -158,6 +213,29 @@ export default function BookingPage() {
           <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-sm text-amber-800 mb-4">
             ⚠️ {result.policy}
           </div>
+
+          {/* WhatsApp confirmation button */}
+          <a
+            href={waLink}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center justify-center gap-2 w-full bg-green-500 hover:bg-green-600 text-white font-bold py-4 rounded-xl text-lg mb-3 transition-all active:scale-95"
+          >
+            <svg viewBox="0 0 24 24" className="w-6 h-6 fill-current"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+            Confirmar por WhatsApp
+          </a>
+
+          {/* Google Review button */}
+          <a
+            href="https://g.page/r/CYgTQYS8TWLnEBE/review"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center justify-center gap-2 w-full bg-white border-2 border-gray-200 hover:border-yellow-400 text-gray-700 font-bold py-3 rounded-xl text-sm mb-3 transition-all active:scale-95"
+          >
+            <span className="text-xl">⭐</span>
+            ¿Cómo fue tu experiencia? Déjanos una reseña
+          </a>
+
           <p className="text-gray-500 text-sm mb-4">
             Para cancelar o cambiar tu cita llama al <a href="tel:7184273594" className="text-pink-600 font-semibold">(718) 427-3594</a>
           </p>
@@ -369,34 +447,6 @@ export default function BookingPage() {
                   className="w-full border-2 border-gray-200 rounded-xl p-3 focus:border-pink-400 focus:outline-none"
                 />
               </div>
-
-              {/* Card info for cancellation policy */}
-              <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
-                <p className="text-sm font-semibold text-amber-800 mb-1">💳 Tarjeta para política de cancelación</p>
-                <p className="text-xs text-amber-700 mb-3">
-                  No se hace ningún cargo ahora. Solo se usa si cancelas tarde o no te presentas.
-                </p>
-                <div className="flex gap-2">
-                  <select
-                    value={cardBrand}
-                    onChange={e => setCardBrand(e.target.value)}
-                    className="border-2 border-amber-200 rounded-lg p-2 text-sm bg-white"
-                  >
-                    <option>Visa</option>
-                    <option>Mastercard</option>
-                    <option>Amex</option>
-                    <option>Discover</option>
-                  </select>
-                  <input
-                    type="text"
-                    value={cardLast4}
-                    onChange={e => setCardLast4(e.target.value.replace(/\D/g,'').slice(0,4))}
-                    placeholder="Últimos 4 dígitos"
-                    maxLength={4}
-                    className="flex-1 border-2 border-amber-200 rounded-lg p-2 text-sm focus:border-amber-400 focus:outline-none"
-                  />
-                </div>
-              </div>
             </div>
             <div className="flex gap-3 mt-6">
               <button onClick={() => setStep(2)} className="text-sm text-gray-400 underline">← Volver</button>
@@ -417,10 +467,106 @@ export default function BookingPage() {
           </div>
         )}
 
-        {/* ── STEP 4: Confirmar ── */}
+        {/* ── STEP 4: Pago del depósito ── */}
         {step === 4 && (
           <div>
+            <h2 className="text-lg font-bold text-gray-800 mb-4">Depósito de Reserva</h2>
+
+            <div className="bg-pink-50 border-2 border-pink-200 rounded-xl p-4 mb-4">
+              <div className="flex items-center gap-3 mb-2">
+                <span className="text-2xl">💳</span>
+                <div>
+                  <p className="font-bold text-pink-700 text-lg">${DEPOSIT_AMOUNT}.00 — Depósito Obligatorio</p>
+                  <p className="text-sm text-pink-600">Se aplica al total de tu servicio cuando llegas</p>
+                </div>
+              </div>
+              <div className="bg-white rounded-lg p-3 mt-3 text-xs text-gray-600 space-y-1">
+                <p>✅ Si llegas a tu cita → los $25 se descuentan del precio total</p>
+                <p>❌ Si no te presentas (no-show) → los $25 cubren la hora perdida</p>
+                <p>🔄 Cancelación con +24h de anticipación → reembolso completo</p>
+              </div>
+            </div>
+
+            {/* Stripe Card Element container */}
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">Tarjeta de crédito o débito</label>
+              <div
+                id="card-element"
+                className="border-2 border-gray-200 rounded-xl p-4 bg-white focus-within:border-pink-400"
+                ref={(el) => {
+                  if (el && !el.dataset.mounted) {
+                    el.dataset.mounted = 'true';
+                    stripePromise.then(stripe => {
+                      const elements = stripe.elements();
+                      const card = elements.create('card', {
+                        style: {
+                          base: {
+                            fontSize: '16px',
+                            color: '#374151',
+                            '::placeholder': { color: '#9ca3af' },
+                          },
+                        },
+                      });
+                      card.mount(el);
+                      window.__stripeCardElement = card;
+                    });
+                  }
+                }}
+              ></div>
+            </div>
+
+            {/* Terms */}
+            <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 mb-4">
+              <div className="flex items-start gap-3">
+                <input
+                  type="checkbox"
+                  id="terms"
+                  checked={termsAccepted}
+                  onChange={e => setTermsAccepted(e.target.checked)}
+                  className="mt-1 w-4 h-4 accent-pink-500"
+                />
+                <label htmlFor="terms" className="text-sm text-gray-700">
+                  Acepto la{' '}
+                  <button
+                    type="button"
+                    onClick={() => setShowTerms(true)}
+                    className="text-pink-600 underline font-medium"
+                  >
+                    política de cancelación
+                  </button>
+                  . Entiendo que se cobra un depósito de <strong>${DEPOSIT_AMOUNT}</strong> que se aplica a mi servicio si me presento. Si no me presento, cubre la hora perdida.
+                </label>
+              </div>
+            </div>
+
+            <button
+              onClick={handlePayDeposit}
+              disabled={processingPayment || !termsAccepted}
+              className={`w-full py-4 rounded-xl font-bold text-white text-lg transition-all ${
+                processingPayment || !termsAccepted
+                  ? 'bg-gray-300 cursor-not-allowed'
+                  : 'bg-green-500 hover:bg-green-600 active:scale-95'
+              }`}
+            >
+              {processingPayment ? '⏳ Procesando pago...' : `💳 Pagar Depósito $${DEPOSIT_AMOUNT}.00`}
+            </button>
+            <button onClick={() => setStep(3)} className="mt-3 w-full text-sm text-gray-400 underline">← Volver</button>
+          </div>
+        )}
+
+        {/* ── STEP 5: Confirmar ── */}
+        {step === 5 && (
+          <div>
             <h2 className="text-lg font-bold text-gray-800 mb-4">Confirma tu cita</h2>
+
+            {/* Deposit paid badge */}
+            <div className="bg-green-50 border-2 border-green-200 rounded-xl p-3 mb-4 flex items-center gap-3">
+              <span className="text-2xl">✅</span>
+              <div>
+                <p className="font-bold text-green-700">Depósito de ${DEPOSIT_AMOUNT}.00 pagado</p>
+                <p className="text-xs text-green-600">Se aplica al total de tu servicio</p>
+              </div>
+            </div>
 
             {/* Summary */}
             <div className="bg-white rounded-xl border-2 border-pink-100 p-4 mb-4 space-y-2">
@@ -446,48 +592,31 @@ export default function BookingPage() {
               </div>
               <hr className="border-pink-100" />
               <div className="flex justify-between">
-                <span className="text-gray-700 font-semibold">Total</span>
+                <span className="text-gray-700 font-semibold">Total del servicio</span>
                 <span className="text-pink-600 font-bold text-lg">${selectedService?.price}</span>
               </div>
-            </div>
-
-            {/* Terms */}
-            <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 mb-4">
-              <div className="flex items-start gap-3">
-                <input
-                  type="checkbox"
-                  id="terms"
-                  checked={termsAccepted}
-                  onChange={e => setTermsAccepted(e.target.checked)}
-                  className="mt-1 w-4 h-4 accent-pink-500"
-                />
-                <label htmlFor="terms" className="text-sm text-gray-700">
-                  Acepto la{' '}
-                  <button
-                    type="button"
-                    onClick={() => setShowTerms(true)}
-                    className="text-pink-600 underline font-medium"
-                  >
-                    política de cancelación
-                  </button>
-                  . Entiendo que cancelaciones con menos de 24 horas tienen un cargo de{' '}
-                  <strong>$15</strong> y los no-shows de <strong>$25</strong>, cargados a mi tarjeta {cardBrand} terminada en <strong>{cardLast4 || '****'}</strong>.
-                </label>
+              <div className="flex justify-between">
+                <span className="text-gray-500 text-sm">Depósito pagado</span>
+                <span className="text-green-600 font-semibold">-${DEPOSIT_AMOUNT}.00</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-700 font-semibold">Balance a pagar en salón</span>
+                <span className="text-pink-600 font-bold text-lg">${Math.max(0, (selectedService?.price || 0) - DEPOSIT_AMOUNT)}</span>
               </div>
             </div>
 
             <button
               onClick={handleSubmit}
-              disabled={submitting || !termsAccepted}
+              disabled={submitting}
               className={`w-full py-4 rounded-xl font-bold text-white text-lg transition-all ${
-                submitting || !termsAccepted
+                submitting
                   ? 'bg-gray-300 cursor-not-allowed'
                   : 'bg-pink-500 hover:bg-pink-600 active:scale-95'
               }`}
             >
               {submitting ? '⏳ Confirmando...' : '🌸 Confirmar Cita'}
             </button>
-            <button onClick={() => setStep(3)} className="mt-3 w-full text-sm text-gray-400 underline">← Volver</button>
+            <button onClick={() => setStep(4)} className="mt-3 w-full text-sm text-gray-400 underline">← Volver</button>
           </div>
         )}
       </div>
