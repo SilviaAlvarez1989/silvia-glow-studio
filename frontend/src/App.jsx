@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
+import { LangProvider } from './lib/i18n.jsx';
 import Layout from './components/layout/Layout';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
@@ -17,29 +18,31 @@ import ConfirmPage from './pages/ConfirmPage';
 export default function App() {
   return (
     <AuthProvider>
-      <BrowserRouter>
-        <Routes>
-          {/* Public booking portal */}
-          <Route path="/book" element={<BookingPage />} />
-          <Route path="/book/:slug" element={<BookingPage />} />
-          <Route path="/book/cancel/:token" element={<CancelPage />} />
-          <Route path="/book/confirm/:token" element={<ConfirmPage />} />
+      <LangProvider>
+        <BrowserRouter>
+          <Routes>
+            {/* Public booking portal */}
+            <Route path="/book" element={<BookingPage />} />
+            <Route path="/book/:slug" element={<BookingPage />} />
+            <Route path="/book/cancel/:token" element={<CancelPage />} />
+            <Route path="/book/confirm/:token" element={<ConfirmPage />} />
 
-          {/* Internal app */}
-          <Route path="/login" element={<Login />} />
-          <Route element={<Layout />}>
-            <Route path="/" element={<Dashboard />} />
-            <Route path="/calendar" element={<CalendarPage />} />
-            <Route path="/appointments" element={<AppointmentsPage />} />
-            <Route path="/appointments/new" element={<NewAppointment />} />
-            <Route path="/appointments/:id" element={<AppointmentDetail />} />
-            <Route path="/clients" element={<ClientsPage />} />
-            <Route path="/services" element={<ServicesPage />} />
-            <Route path="/staff" element={<StaffPage />} />
-          </Route>
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </BrowserRouter>
+            {/* Internal app */}
+            <Route path="/login" element={<Login />} />
+            <Route element={<Layout />}>
+              <Route path="/" element={<Dashboard />} />
+              <Route path="/calendar" element={<CalendarPage />} />
+              <Route path="/appointments" element={<AppointmentsPage />} />
+              <Route path="/appointments/new" element={<NewAppointment />} />
+              <Route path="/appointments/:id" element={<AppointmentDetail />} />
+              <Route path="/clients" element={<ClientsPage />} />
+              <Route path="/services" element={<ServicesPage />} />
+              <Route path="/staff" element={<StaffPage />} />
+            </Route>
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </BrowserRouter>
+      </LangProvider>
     </AuthProvider>
   );
 }

@@ -1,13 +1,15 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getSalonInfo, getServices, getStaff, getAvailability, createReservation } from '../lib/bookingApi';
+import { useLang, LangToggle } from '../lib/i18n.jsx';
 
 const DEPOSIT_AMOUNT = 25;
 
 const ZELLE_EMAIL = 'Silvinails94@gmail.com';
 const ZELLE_NAME = 'Silvia Glow Studio LLC';
 
-const STEPS = ['Servicio', 'Técnica', 'Fecha & Hora', 'Tus Datos', 'Pago', 'Confirmar'];
+const STEPS = [t('service_label'), t('technician_label'), 'Fecha & Hora', 'Tus Datos', 'Pago', 'Confirmar'];
+const STEPS_EN = ['Service', 'Technician', 'Date & Time', 'Your Info', 'Payment', 'Confirm'];
 
 const TERMS_TEXT = `POLÍTICA DE CANCELACIÓN — Silvia Glow Studio LLC
 
@@ -34,6 +36,8 @@ function getClientIP() {
 export default function BookingPage() {
   const { slug = 'silvia-glow' } = useParams();
   const navigate = useNavigate();
+  const { lang, t } = useLang();
+  const steps = lang === 'es' ? STEPS : STEPS_EN;
 
   const [step, setStep] = useState(0);
   const [salon, setSalon] = useState(null);
@@ -72,7 +76,7 @@ export default function BookingPage() {
         setServices(svcs);
         setStaff(stf);
       } catch (e) {
-        setError('No se pudo cargar el salón.');
+        setError(t('error_load'));
       } finally {
         setLoading(false);
       }
@@ -111,16 +115,16 @@ export default function BookingPage() {
   function formatDate(d) {
     if (!d) return '';
     const dt = new Date(d + 'T12:00:00');
-    return dt.toLocaleDateString('es-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+    return dt.toLocaleDateString(lang === 'es' ? 'es-US' : 'en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
   }
 
   async function handleSubmit() {
     if (!termsAccepted) {
-      setError('Debes aceptar los términos de cancelación.');
+      setError(t('error_terms'));
       return;
     }
     if (!zelleSent) {
-      setError('Debes confirmar que enviaste el depósito de $25 por Zelle.');
+      setError(t('error_zelle'));
       return;
     }
     setSubmitting(true);
@@ -141,7 +145,7 @@ export default function BookingPage() {
       });
       setResult(data);
     } catch (e) {
-      setError(e.response?.data?.error || 'Error al confirmar la cita. Intenta de nuevo.');
+      setError(e.response?.data?.error || t('error_generic'));
     } finally {
       setSubmitting(false);
     }
@@ -200,7 +204,7 @@ export default function BookingPage() {
           </a>
 
           <p className="text-gray-500 text-sm mb-4">
-            Para cancelar o cambiar tu cita llama al <a href="tel:7184273594" className="text-pink-600 font-semibold">(718) 427-3594</a>
+            {t('cancel_change')} <a href="tel:7184273594" className="text-pink-600 font-semibold">(718) 427-3594</a>
           </p>
           <a
             href={result.cancel_url}
@@ -227,14 +231,15 @@ export default function BookingPage() {
       <div className="bg-white shadow-sm sticky top-0 z-10">
         <div className="max-w-lg mx-auto px-4 py-4 flex items-center gap-3">
           <div className="text-2xl">🌸</div>
-          <div>
+          <div className="flex-1">
             <h1 className="font-bold text-gray-800 leading-tight">{salon?.name}</h1>
             <p className="text-xs text-gray-500">{salon?.address}</p>
           </div>
+          <LangToggle />
         </div>
         {/* Progress bar */}
         <div className="flex border-t border-gray-100">
-          {STEPS.map((s, i) => (
+          {steps.map((s, i) => (
             <div
               key={s}
               className={`flex-1 py-2 text-center text-xs font-medium transition-colors ${
@@ -416,7 +421,7 @@ export default function BookingPage() {
               <button
                 onClick={() => {
                   if (!clientName.trim() || !clientPhone.trim()) {
-                    setError('Nombre y teléfono son requeridos.');
+                    setError(t('name_phone_required'));
                     return;
                   }
                   setError('');
@@ -518,8 +523,8 @@ export default function BookingPage() {
 
             <button
               onClick={() => {
-                if (!zelleSent) { setError('Confirma que enviaste el Zelle para continuar.'); return; }
-                if (!termsAccepted) { setError('Debes aceptar los términos.'); return; }
+                if (!zelleSent) { setError(t('confirm_zelle_sent')); return; }
+                if (!termsAccepted) { setError(t('accept_terms_required')); return; }
                 setError('');
                 setStep(5);
               }}
@@ -558,7 +563,7 @@ export default function BookingPage() {
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-500 text-sm">Técnica</span>
-                <span className="font-medium text-sm">{selectedStaff?.name || 'Sin preferencia'}</span>
+                <span className="font-medium text-sm">{selectedStaff?.name || t('no_preference')}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-500 text-sm">Fecha</span>
@@ -596,7 +601,7 @@ export default function BookingPage() {
                   : 'bg-pink-500 hover:bg-pink-600 active:scale-95'
               }`}
             >
-              {submitting ? '⏳ Confirmando...' : '🌸 Confirmar Cita'}
+              {submitting ? t('confirming') : t('btn_confirm')}
             </button>
             <button onClick={() => setStep(4)} className="mt-3 w-full text-sm text-gray-400 underline">← Volver</button>
           </div>
