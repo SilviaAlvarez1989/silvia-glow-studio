@@ -222,7 +222,7 @@ exports.getAvailability = async (req, res) => {
 
 // POST /api/booking/salon/:slug/reserve
 // Body: { client_name, client_email, client_phone, service_id, technician_id, date, time,
-//         payment_intent_id, terms_accepted, terms_ip }
+//         payment_method, zelle_sender_name, terms_accepted, terms_ip }
 exports.createReservation = async (req, res) => {
   const client = await pool.connect();
   try {
@@ -230,7 +230,7 @@ exports.createReservation = async (req, res) => {
     const {
       client_name, client_email, client_phone,
       service_id, technician_id, date, time,
-      payment_intent_id,
+      payment_method, zelle_sender_name,
       terms_accepted, terms_ip
     } = req.body;
 
@@ -241,16 +241,8 @@ exports.createReservation = async (req, res) => {
     if (!terms_accepted) {
       return res.status(400).json({ error: 'Debes aceptar los términos de cancelación' });
     }
-    if (!payment_intent_id) {
-      return res.status(400).json({ error: 'El depósito de $25 es requerido para reservar' });
-    }
 
-    // Verify payment was successful
-    const paymentIntent = await stripe.paymentIntents.retrieve(payment_intent_id);
-    if (paymentIntent.status !== 'succeeded') {
-      return res.status(400).json({ error: 'El pago del depósito no fue completado' });
-    }
-    const card_last4 = paymentIntent.latest_charge ? '' : '';
+    const card_last4 = '';
     const card_brand = '';
 
     const { rows: salonRows } = await client.query(
@@ -348,8 +340,9 @@ exports.createReservation = async (req, res) => {
           noshow_fee: NOSHOW_FEE,
           cancel_policy_hours: CANCEL_HOURS,
           deposit_amount: DEPOSIT_AMOUNT,
-          deposit_payment_intent: payment_intent_id,
-          deposit_status: 'paid'
+          deposit_method: payment_method || 'zelle',
+          deposit_status: 'pending_verification',
+          zelle_sender_name: zelle_sender_name || client_name
         })
       ]
     );

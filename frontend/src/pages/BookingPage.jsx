@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getSalonInfo, getServices, getStaff, getAvailability, createDepositIntent, createReservation } from '../lib/bookingApi';
-import { loadStripe } from '@stripe/stripe-js';
-
-const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PK || 'pk_live_placeholder');
+import { getSalonInfo, getServices, getStaff, getAvailability, createReservation } from '../lib/bookingApi';
 
 const DEPOSIT_AMOUNT = 25;
+
+const ZELLE_EMAIL = 'PENDING'; // Will be updated with Silvia's Zelle email
+const ZELLE_NAME = 'Silvia Glow Studio LLC';
 
 const STEPS = ['Servicio', 'Técnica', 'Fecha & Hora', 'Tus Datos', 'Pago', 'Confirmar'];
 
@@ -57,9 +57,8 @@ export default function BookingPage() {
   const [cardBrand, setCardBrand] = useState('Visa');
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [showTerms, setShowTerms] = useState(false);
-  const [paymentIntentId, setPaymentIntentId] = useState(null);
-  const [depositPaid, setDepositPaid] = useState(false);
-  const [processingPayment, setProcessingPayment] = useState(false);
+  const [zelleSent, setZelleSent] = useState(false);
+  const [zelleConfirmName, setZelleConfirmName] = useState('');
 
   useEffect(() => {
     async function load() {
@@ -120,8 +119,8 @@ export default function BookingPage() {
       setError('Debes aceptar los términos de cancelación.');
       return;
     }
-    if (!paymentIntentId || !depositPaid) {
-      setError('Debes pagar el depósito de $25 para confirmar la cita.');
+    if (!zelleSent) {
+      setError('Debes confirmar que enviaste el depósito de $25 por Zelle.');
       return;
     }
     setSubmitting(true);
@@ -135,7 +134,8 @@ export default function BookingPage() {
         technician_id: selectedStaff?.id || null,
         date: selectedDate,
         time: selectedTime,
-        payment_intent_id: paymentIntentId,
+        payment_method: 'zelle',
+        zelle_sender_name: zelleConfirmName || clientName,
         terms_accepted: true,
         terms_ip: getClientIP(),
       });
@@ -144,43 +144,6 @@ export default function BookingPage() {
       setError(e.response?.data?.error || 'Error al confirmar la cita. Intenta de nuevo.');
     } finally {
       setSubmitting(false);
-    }
-  }
-
-  async function handlePayDeposit() {
-    setProcessingPayment(true);
-    setError('');
-    try {
-      // Create deposit intent on backend
-      const { clientSecret } = await createDepositIntent(slug, {
-        client_name: clientName,
-        client_email: clientEmail,
-      });
-
-      // Load Stripe and confirm payment
-      const stripe = await stripePromise;
-      const { error: stripeError, paymentIntent } = await stripe.confirmCardPayment(clientSecret, {
-        payment_method: {
-          card: window.__stripeCardElement,
-          billing_details: {
-            name: clientName,
-            email: clientEmail || undefined,
-            phone: clientPhone,
-          },
-        },
-      });
-
-      if (stripeError) {
-        setError(stripeError.message);
-      } else if (paymentIntent.status === 'succeeded') {
-        setPaymentIntentId(paymentIntent.id);
-        setDepositPaid(true);
-        setStep(5); // Go to confirm step
-      }
-    } catch (e) {
-      setError(e.response?.data?.error || 'Error procesando el pago. Intenta de nuevo.');
-    } finally {
-      setProcessingPayment(false);
     }
   }
 
@@ -467,19 +430,34 @@ export default function BookingPage() {
           </div>
         )}
 
-        {/* ── STEP 4: Pago del depósito ── */}
+        {/* ── STEP 4: Pago del depósito via Zelle ── */}
         {step === 4 && (
           <div>
             <h2 className="text-lg font-bold text-gray-800 mb-4">Depósito de Reserva</h2>
 
-            <div className="bg-pink-50 border-2 border-pink-200 rounded-xl p-4 mb-4">
-              <div className="flex items-center gap-3 mb-2">
-                <span className="text-2xl">💳</span>
+            <div className="bg-purple-50 border-2 border-purple-200 rounded-xl p-4 mb-4">
+              <div className="flex items-center gap-3 mb-3">
+                <span className="text-2xl">💸</span>
                 <div>
-                  <p className="font-bold text-pink-700 text-lg">${DEPOSIT_AMOUNT}.00 — Depósito Obligatorio</p>
-                  <p className="text-sm text-pink-600">Se aplica al total de tu servicio cuando llegas</p>
+                  <p className="font-bold text-purple-700 text-lg">${DEPOSIT_AMOUNT}.00 — Depósito por Zelle</p>
+                  <p className="text-sm text-purple-600">Se aplica al total de tu servicio cuando llegas</p>
                 </div>
               </div>
+
+              {/* Zelle QR */}
+              <div className="bg-white rounded-xl p-4 text-center mb-3">
+                <img src="/zelle-qr.jpg" alt="Zelle QR - Silvia Glow Studio LLC" className="w-48 h-48 mx-auto object-contain mb-2" />
+                <p className="text-sm font-semibold text-gray-700">Escanea el QR con tu app de banco</p>
+              </div>
+
+              {/* Manual info */}
+              <div className="bg-white rounded-lg p-3 text-sm text-gray-700 space-y-1">
+                <p className="font-semibold">O envía manualmente a:</p>
+                <p>📱 <strong>Nombre:</strong> {ZELLE_NAME}</p>
+                <p>📧 <strong>Email:</strong> {ZELLE_EMAIL}</p>
+                <p>💰 <strong>Monto:</strong> ${DEPOSIT_AMOUNT}.00</p>
+              </div>
+
               <div className="bg-white rounded-lg p-3 mt-3 text-xs text-gray-600 space-y-1">
                 <p>✅ Si llegas a tu cita → los $25 se descuentan del precio total</p>
                 <p>❌ Si no te presentas (no-show) → los $25 cubren la hora perdida</p>
@@ -487,32 +465,31 @@ export default function BookingPage() {
               </div>
             </div>
 
-            {/* Stripe Card Element container */}
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">Tarjeta de crédito o débito</label>
-              <div
-                id="card-element"
-                className="border-2 border-gray-200 rounded-xl p-4 bg-white focus-within:border-pink-400"
-                ref={(el) => {
-                  if (el && !el.dataset.mounted) {
-                    el.dataset.mounted = 'true';
-                    stripePromise.then(stripe => {
-                      const elements = stripe.elements();
-                      const card = elements.create('card', {
-                        style: {
-                          base: {
-                            fontSize: '16px',
-                            color: '#374151',
-                            '::placeholder': { color: '#9ca3af' },
-                          },
-                        },
-                      });
-                      card.mount(el);
-                      window.__stripeCardElement = card;
-                    });
-                  }
-                }}
-              ></div>
+            {/* Confirmation */}
+            <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 mb-4 space-y-3">
+              <p className="text-sm font-semibold text-gray-700">Después de enviar el Zelle:</p>
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">Nombre con el que enviaste el Zelle</label>
+                <input
+                  type="text"
+                  value={zelleConfirmName}
+                  onChange={e => setZelleConfirmName(e.target.value)}
+                  placeholder="Tu nombre en Zelle"
+                  className="w-full border-2 border-gray-200 rounded-lg p-2 text-sm focus:border-purple-400 focus:outline-none"
+                />
+              </div>
+              <div className="flex items-start gap-3">
+                <input
+                  type="checkbox"
+                  id="zelle-sent"
+                  checked={zelleSent}
+                  onChange={e => setZelleSent(e.target.checked)}
+                  className="mt-1 w-4 h-4 accent-purple-500"
+                />
+                <label htmlFor="zelle-sent" className="text-sm text-gray-700">
+                  ✅ Ya envié <strong>${DEPOSIT_AMOUNT}.00</strong> por Zelle a <strong>{ZELLE_NAME}</strong>
+                </label>
+              </div>
             </div>
 
             {/* Terms */}
@@ -534,21 +511,26 @@ export default function BookingPage() {
                   >
                     política de cancelación
                   </button>
-                  . Entiendo que se cobra un depósito de <strong>${DEPOSIT_AMOUNT}</strong> que se aplica a mi servicio si me presento. Si no me presento, cubre la hora perdida.
+                  . Entiendo que el depósito de <strong>${DEPOSIT_AMOUNT}</strong> se aplica a mi servicio si me presento. Si no me presento, cubre la hora perdida.
                 </label>
               </div>
             </div>
 
             <button
-              onClick={handlePayDeposit}
-              disabled={processingPayment || !termsAccepted}
+              onClick={() => {
+                if (!zelleSent) { setError('Confirma que enviaste el Zelle para continuar.'); return; }
+                if (!termsAccepted) { setError('Debes aceptar los términos.'); return; }
+                setError('');
+                setStep(5);
+              }}
+              disabled={!zelleSent || !termsAccepted}
               className={`w-full py-4 rounded-xl font-bold text-white text-lg transition-all ${
-                processingPayment || !termsAccepted
+                !zelleSent || !termsAccepted
                   ? 'bg-gray-300 cursor-not-allowed'
-                  : 'bg-green-500 hover:bg-green-600 active:scale-95'
+                  : 'bg-purple-600 hover:bg-purple-700 active:scale-95'
               }`}
             >
-              {processingPayment ? '⏳ Procesando pago...' : `💳 Pagar Depósito $${DEPOSIT_AMOUNT}.00`}
+              ✅ Ya envié el Zelle — Continuar
             </button>
             <button onClick={() => setStep(3)} className="mt-3 w-full text-sm text-gray-400 underline">← Volver</button>
           </div>
@@ -559,12 +541,12 @@ export default function BookingPage() {
           <div>
             <h2 className="text-lg font-bold text-gray-800 mb-4">Confirma tu cita</h2>
 
-            {/* Deposit paid badge */}
+            {/* Zelle deposit badge */}
             <div className="bg-green-50 border-2 border-green-200 rounded-xl p-3 mb-4 flex items-center gap-3">
               <span className="text-2xl">✅</span>
               <div>
-                <p className="font-bold text-green-700">Depósito de ${DEPOSIT_AMOUNT}.00 pagado</p>
-                <p className="text-xs text-green-600">Se aplica al total de tu servicio</p>
+                <p className="font-bold text-green-700">Depósito de ${DEPOSIT_AMOUNT}.00 enviado por Zelle</p>
+                <p className="text-xs text-green-600">Pendiente de confirmación por el salón</p>
               </div>
             </div>
 
@@ -596,7 +578,7 @@ export default function BookingPage() {
                 <span className="text-pink-600 font-bold text-lg">${selectedService?.price}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-500 text-sm">Depósito pagado</span>
+                <span className="text-gray-500 text-sm">Depósito Zelle</span>
                 <span className="text-green-600 font-semibold">-${DEPOSIT_AMOUNT}.00</span>
               </div>
               <div className="flex justify-between">
