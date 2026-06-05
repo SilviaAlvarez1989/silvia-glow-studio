@@ -4,7 +4,7 @@ import { getSalonInfo, getServices, getStaff, getAvailability, createReservation
 
 const DEPOSIT_AMOUNT = 25;
 
-const ZELLE_EMAIL = 'PENDING'; // Will be updated with Silvia's Zelle email
+const ZELLE_EMAIL = 'Silvinails94@gmail.com';
 const ZELLE_NAME = 'Silvia Glow Studio LLC';
 
 const STEPS = ['Servicio', 'Técnica', 'Fecha & Hora', 'Tus Datos', 'Pago', 'Confirmar'];
