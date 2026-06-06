@@ -220,7 +220,7 @@ export default function BookingPage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-pink-50 flex items-center justify-center">
-        <div className="text-pink-400 text-xl animate-pulse">🌸 Cargando...</div>
+        <div className="text-pink-400 text-xl animate-pulse">{t("loading")}</div>
       </div>
     );
   }
@@ -264,7 +264,7 @@ export default function BookingPage() {
         {/* ── STEP 0: Servicio ── */}
         {step === 0 && (
           <div>
-            <h2 className="text-lg font-bold text-gray-800 mb-4">¿Qué servicio quieres?</h2>
+            <h2 className="text-lg font-bold text-gray-800 mb-4">{t("what_service")}</h2>
             {Object.entries(servicesByCategory).map(([cat, svcs]) => (
               <div key={cat} className="mb-5">
                 <h3 className="text-sm font-semibold text-pink-500 uppercase tracking-wide mb-2">{cat}</h3>
@@ -295,7 +295,7 @@ export default function BookingPage() {
         {/* ── STEP 1: Técnica ── */}
         {step === 1 && (
           <div>
-            <h2 className="text-lg font-bold text-gray-800 mb-4">¿Con quién quieres la cita?</h2>
+            <h2 className="text-lg font-bold text-gray-800 mb-4">{t("who_with")}</h2>
             <button
               onClick={() => { setSelectedStaff(null); setStep(2); }}
               className={`w-full flex items-center gap-3 p-4 rounded-xl border-2 mb-2 transition-all ${
@@ -304,8 +304,8 @@ export default function BookingPage() {
             >
               <div className="w-10 h-10 bg-pink-100 rounded-full flex items-center justify-center text-xl">✨</div>
               <div className="text-left">
-                <p className="font-medium text-gray-800">Sin preferencia</p>
-                <p className="text-xs text-gray-500">Primera disponible</p>
+                <p className="font-medium text-gray-800">{t("no_preference")}</p>
+                <p className="text-xs text-gray-500">{t("first_available")}</p>
               </div>
             </button>
             {staff.map(t => (
@@ -322,15 +322,15 @@ export default function BookingPage() {
                 <p className="font-medium text-gray-800">{t.name}</p>
               </button>
             ))}
-            <button onClick={() => setStep(0)} className="mt-4 text-sm text-gray-400 underline">← Volver</button>
+            <button onClick={() => setStep(0)} className="mt-4 text-sm text-gray-400 underline">{t("back")}</button>
           </div>
         )}
 
         {/* ── STEP 2: Fecha & Hora ── */}
         {step === 2 && (
           <div>
-            <h2 className="text-lg font-bold text-gray-800 mb-4">¿Cuándo quieres venir?</h2>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Selecciona la fecha</label>
+            <h2 className="text-lg font-bold text-gray-800 mb-4">{t("when_come")}</h2>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{t("select_date")}</label>
             <input
               type="date"
               min={today}
@@ -340,12 +340,12 @@ export default function BookingPage() {
             />
             {selectedDate && (
               <>
-                <p className="text-sm font-medium text-gray-700 mb-2">Horarios disponibles</p>
+                <p className="text-sm font-medium text-gray-700 mb-2">{t("available_times")}</p>
                 {availability.length === 0 ? (
                   <div className="text-center py-8 text-gray-400">
                     <p className="text-3xl mb-2">😔</p>
-                    <p>No hay horarios disponibles para esta fecha.</p>
-                    <p className="text-sm">Prueba con otra fecha.</p>
+                    <p>{t("no_slots")}</p>
+                    <p className="text-sm">{t("try_another")}</p>
                   </div>
                 ) : (
                   <div className="grid grid-cols-3 gap-2">
@@ -367,13 +367,13 @@ export default function BookingPage() {
               </>
             )}
             <div className="flex gap-3 mt-6">
-              <button onClick={() => setStep(1)} className="text-sm text-gray-400 underline">← Volver</button>
+              <button onClick={() => setStep(1)} className="text-sm text-gray-400 underline">{t("back")}</button>
               {selectedTime && (
                 <button
                   onClick={() => setStep(3)}
                   className="ml-auto bg-pink-500 text-white px-6 py-2 rounded-xl font-medium"
                 >
-                  Continuar →
+                  {t("continue")}
                 </button>
               )}
             </div>
@@ -383,10 +383,10 @@ export default function BookingPage() {
         {/* ── STEP 3: Datos del cliente ── */}
         {step === 3 && (
           <div>
-            <h2 className="text-lg font-bold text-gray-800 mb-4">Tus datos</h2>
+            <h2 className="text-lg font-bold text-gray-800 mb-4">{t("your_details")}</h2>
             <div className="space-y-3">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Nombre completo *</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t("full_name")}</label>
                 <input
                   type="text"
                   value={clientName}
@@ -396,7 +396,7 @@ export default function BookingPage() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Teléfono *</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t("phone")}</label>
                 <input
                   type="tel"
                   value={clientPhone}
@@ -406,7 +406,7 @@ export default function BookingPage() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Email (opcional)</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t("email_optional")}</label>
                 <input
                   type="email"
                   value={clientEmail}
@@ -417,7 +417,7 @@ export default function BookingPage() {
               </div>
             </div>
             <div className="flex gap-3 mt-6">
-              <button onClick={() => setStep(2)} className="text-sm text-gray-400 underline">← Volver</button>
+              <button onClick={() => setStep(2)} className="text-sm text-gray-400 underline">{t("back")}</button>
               <button
                 onClick={() => {
                   if (!clientName.trim() || !clientPhone.trim()) {
@@ -429,7 +429,7 @@ export default function BookingPage() {
                 }}
                 className="ml-auto bg-pink-500 text-white px-6 py-2 rounded-xl font-medium"
               >
-                Continuar →
+                {t("continue")}
               </button>
             </div>
           </div>
@@ -438,29 +438,29 @@ export default function BookingPage() {
         {/* ── STEP 4: Pago del depósito via Zelle ── */}
         {step === 4 && (
           <div>
-            <h2 className="text-lg font-bold text-gray-800 mb-4">Depósito de Reserva</h2>
+            <h2 className="text-lg font-bold text-gray-800 mb-4">{t("deposit_title")}</h2>
 
             <div className="bg-purple-50 border-2 border-purple-200 rounded-xl p-4 mb-4">
               <div className="flex items-center gap-3 mb-3">
                 <span className="text-2xl">💸</span>
                 <div>
                   <p className="font-bold text-purple-700 text-lg">${DEPOSIT_AMOUNT}.00 — Depósito por Zelle</p>
-                  <p className="text-sm text-purple-600">Se aplica al total de tu servicio cuando llegas</p>
+                  <p className="text-sm text-purple-600">{t("deposit_applies")}</p>
                 </div>
               </div>
 
               {/* Zelle QR */}
               <div className="bg-white rounded-xl p-4 text-center mb-3">
                 <img src="/zelle-qr.jpg" alt="Zelle QR - Silvia Glow Studio LLC" className="w-48 h-48 mx-auto object-contain mb-2" />
-                <p className="text-sm font-semibold text-gray-700">Escanea el QR con tu app de banco</p>
+                <p className="text-sm font-semibold text-gray-700">{t("scan_qr")}</p>
               </div>
 
               {/* Manual info */}
               <div className="bg-white rounded-lg p-3 text-sm text-gray-700 space-y-1">
-                <p className="font-semibold">O envía manualmente a:</p>
-                <p>📱 <strong>Nombre:</strong> {ZELLE_NAME}</p>
-                <p>📧 <strong>Email:</strong> {ZELLE_EMAIL}</p>
-                <p>💰 <strong>Monto:</strong> ${DEPOSIT_AMOUNT}.00</p>
+                <p className="font-semibold">{t("or_send_manually")}</p>
+                <p>📱 <strong>{t("name_label")}</strong> {ZELLE_NAME}</p>
+                <p>📧 <strong>{t("email_label")}</strong> {ZELLE_EMAIL}</p>
+                <p>💰 <strong>{t("amount_label")}</strong> ${DEPOSIT_AMOUNT}.00</p>
               </div>
 
               <div className="bg-white rounded-lg p-3 mt-3 text-xs text-gray-600 space-y-1">
@@ -474,12 +474,12 @@ export default function BookingPage() {
             <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 mb-4 space-y-3">
               <p className="text-sm font-semibold text-gray-700">Después de enviar el Zelle:</p>
               <div>
-                <label className="block text-xs text-gray-500 mb-1">Nombre con el que enviaste el Zelle</label>
+                <label className="block text-xs text-gray-500 mb-1">{t("zelle_sender_name")}</label>
                 <input
                   type="text"
                   value={zelleConfirmName}
                   onChange={e => setZelleConfirmName(e.target.value)}
-                  placeholder="Tu nombre en Zelle"
+                  placeholder={t("your_zelle_name")}
                   className="w-full border-2 border-gray-200 rounded-lg p-2 text-sm focus:border-purple-400 focus:outline-none"
                 />
               </div>
@@ -535,16 +535,16 @@ export default function BookingPage() {
                   : 'bg-purple-600 hover:bg-purple-700 active:scale-95'
               }`}
             >
-              ✅ Ya envié el Zelle — Continuar
+              {t("btn_zelle_continue")}
             </button>
-            <button onClick={() => setStep(3)} className="mt-3 w-full text-sm text-gray-400 underline">← Volver</button>
+            <button onClick={() => setStep(3)} className="mt-3 w-full text-sm text-gray-400 underline">{t("back")}</button>
           </div>
         )}
 
         {/* ── STEP 5: Confirmar ── */}
         {step === 5 && (
           <div>
-            <h2 className="text-lg font-bold text-gray-800 mb-4">Confirma tu cita</h2>
+            <h2 className="text-lg font-bold text-gray-800 mb-4">{t("confirm_appointment")}</h2>
 
             {/* Zelle deposit badge */}
             <div className="bg-green-50 border-2 border-green-200 rounded-xl p-3 mb-4 flex items-center gap-3">
@@ -558,36 +558,36 @@ export default function BookingPage() {
             {/* Summary */}
             <div className="bg-white rounded-xl border-2 border-pink-100 p-4 mb-4 space-y-2">
               <div className="flex justify-between">
-                <span className="text-gray-500 text-sm">Servicio</span>
+                <span className="text-gray-500 text-sm">{t("service_label")}</span>
                 <span className="font-medium text-sm">{selectedService?.name}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-500 text-sm">Técnica</span>
+                <span className="text-gray-500 text-sm">{t("technician_label")}</span>
                 <span className="font-medium text-sm">{selectedStaff?.name || t('no_preference')}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-500 text-sm">Fecha</span>
+                <span className="text-gray-500 text-sm">{t("date_label")}</span>
                 <span className="font-medium text-sm">{formatDate(selectedDate)}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-500 text-sm">Hora</span>
+                <span className="text-gray-500 text-sm">{t("time_label")}</span>
                 <span className="font-medium text-sm">{formatTime(selectedTime)}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-500 text-sm">Duración</span>
+                <span className="text-gray-500 text-sm">{t("duration_label")}</span>
                 <span className="font-medium text-sm">{selectedService?.duration_minutes} min</span>
               </div>
               <hr className="border-pink-100" />
               <div className="flex justify-between">
-                <span className="text-gray-700 font-semibold">Total del servicio</span>
+                <span className="text-gray-700 font-semibold">{t("service_total")}</span>
                 <span className="text-pink-600 font-bold text-lg">${selectedService?.price}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-500 text-sm">Depósito Zelle</span>
+                <span className="text-gray-500 text-sm">{t("zelle_deposit")}</span>
                 <span className="text-green-600 font-semibold">-${DEPOSIT_AMOUNT}.00</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-700 font-semibold">Balance a pagar en salón</span>
+                <span className="text-gray-700 font-semibold">{t("balance_salon")}</span>
                 <span className="text-pink-600 font-bold text-lg">${Math.max(0, (selectedService?.price || 0) - DEPOSIT_AMOUNT)}</span>
               </div>
             </div>
@@ -603,7 +603,7 @@ export default function BookingPage() {
             >
               {submitting ? t('confirming') : t('btn_confirm')}
             </button>
-            <button onClick={() => setStep(4)} className="mt-3 w-full text-sm text-gray-400 underline">← Volver</button>
+            <button onClick={() => setStep(4)} className="mt-3 w-full text-sm text-gray-400 underline">{t("back")}</button>
           </div>
         )}
       </div>
