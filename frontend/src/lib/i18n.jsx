@@ -201,7 +201,7 @@ export function LangProvider({ children }) {
     if (saved && (saved === 'en' || saved === 'es')) return saved;
     // Detect browser language
     const browserLang = navigator.language?.slice(0, 2);
-    return browserLang === 'es' ? 'es' : 'en';
+    return 'en';
   });
 
   const toggleLang = () => {

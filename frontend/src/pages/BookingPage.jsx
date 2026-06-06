@@ -8,7 +8,7 @@ const DEPOSIT_AMOUNT = 25;
 const ZELLE_EMAIL = 'Silvinails94@gmail.com';
 const ZELLE_NAME = 'Silvia Glow Studio LLC';
 
-const STEPS = [t('service_label'), t('technician_label'), 'Fecha & Hora', 'Tus Datos', 'Pago', 'Confirmar'];
+const STEPS = ['Servicio', 'Técnica', 'Fecha & Hora', 'Tus Datos', 'Pago', 'Confirmar'];
 const STEPS_EN = ['Service', 'Technician', 'Date & Time', 'Your Info', 'Payment', 'Confirm'];
 
 const TERMS_TEXT = `POLÍTICA DE CANCELACIÓN — Silvia Glow Studio LLC
