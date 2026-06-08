@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/png" href="/icon-192.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#ec4899" />
+    <meta name="description" content="Silvia Glow Studio LLC - Book your appointment" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="Silvia Glow" />
+    <link rel="apple-touch-icon" href="/icon-192.png" />
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
+    <title>Silvia Glow Studio</title>
+    <script type="module" crossorigin src="/assets/index-SZh6Rf2F.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-DgtKjz8t.css">
+  </head>
+  <body>
+    <div id="root"></div>
+    <script>
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.getRegistrations().then(function(regs) {
+          for (var i = 0; i < regs.length; i++) { regs[i].unregister(); }
+        });
+      }
+      if ('caches' in window) {
+        caches.keys().then(function(keys) {
+          for (var i = 0; i < keys.length; i++) { caches.delete(keys[i]); }
+        });
+      }
+      localStorage.removeItem('silvia-glow-lang');
+    </script>
+  </body>
+</html>
